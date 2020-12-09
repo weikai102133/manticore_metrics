@@ -20,7 +20,7 @@
 *databaseName = Manticore
 
 # manticore-metrics
----------------
+=============
 
 *目前支持监控manticore以下指标
 
