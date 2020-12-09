@@ -12,7 +12,8 @@
 
 *  目前manticore.conf配置如下：
 
-*manticoreDriverName = mysql
+#manticoreDriverName = mysql
+======
 *username = root
 *password = root
 *ip = 127.0.0.1
@@ -22,7 +23,7 @@
 # manticore-metrics
 =============
 
-*目前支持监控manticore以下指标
+#目前支持监控manticore以下指标
 
 #Name: "manticore_metric_thread_num"
 *Help: "显示这个线程已经完成的任务总数"
