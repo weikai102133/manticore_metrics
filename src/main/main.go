@@ -337,7 +337,7 @@ func recordMetrics() {
 		}
 	}()
 
-	//查询并收集manticore当前索引zhuangt
+	//查询并收集manticore当前索引状态
 	go func() {
 		for {
 			time.Sleep(2 * time.Second)
