@@ -10,25 +10,23 @@
 *  port                  数据库端口号
 *  databaseName          数据库名称
 
-*  目前manticore.conf配置如下：
+# 目前manticore.conf配置如下：
 
-#manticoreDriverName = mysql
-======
-*username = root
-*password = root
-*ip = 127.0.0.1
-*port = 9306
-*databaseName = Manticore
+*   manticoreDriverName = mysql
+*   username = root
+*   password = root
+*   ip = 127.0.0.1
+*   port = 9306
+*   databaseName = Manticore
 
-# manticore-metrics
+# manticore-metrics 目前支持监控manticore以下指标
 =============
 
-#目前支持监控manticore以下指标
 
-#Name: "manticore_metric_thread_num"
+*Name: "manticore_metric_thread_num"
 *Help: "显示这个线程已经完成的任务总数"
 
-#Name: "manticore_thread_in_idle"
+*Name: "manticore_thread_in_idle"
 *Help: "显示当前线程是否空闲 0为空闲 1为working"
 
 #Name: "manticore_thread_in_idle_num"
