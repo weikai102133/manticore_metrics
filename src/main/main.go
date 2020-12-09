@@ -10,6 +10,7 @@ import (
 	"gopkg.in/ini.v1"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -17,6 +18,9 @@ import (
 )
 
 var (
+
+	loger *log.Logger
+
 	db = &sql.DB{}
 
 	/*uptime = promauto.NewGauge(prometheus.GaugeOpts{
@@ -389,7 +393,7 @@ func showIndexStatus(indexName string) {
 	rows,err:=db.Query("show index "+indexName+" status")       //获取所有数据
 
 	if  err != nil{
-		log.Println(err)
+		loger.Println(err)
 		return
 	}
 
@@ -600,16 +604,31 @@ func initSql(){
 	config,err := ReadConfig(filepath)   //也可以通过os.arg或flag从命令行指定配置文件路径
 
 	if err != nil {
-		log.Fatal(err)
+		loger.Fatal(err)
 	}
 
-	log.Println(config.ManticoreDriverName)
-	log.Println(config.Username +":"+config.Password +"@("+config.Ip +":"+config.Port +")/"+config.DatabaseName)
+	loger.Println(config.ManticoreDriverName)
+	loger.Println(config.Username +":"+config.Password +"@("+config.Ip +":"+config.Port +")/"+config.DatabaseName)
 	// 设置连接数据库的参数
 	db, err =sql.Open(config.ManticoreDriverName,config.Username+":"+config.Password+"@("+config.Ip+":"+config.Port+")/"+config.DatabaseName)
 	if err != nil {
-		log.Fatal(err)
+		loger.Fatal(err)
 	}
+}
+
+func init() {
+	file,er:=os.Open("D:/manticore.metrics/src/log.txt")
+	defer func(){ _ = file.Close() }()
+	if er!=nil && !os.IsExist(er){
+		file, _ = os.Create("D:/manticore.metrics/src/log.txt")
+
+	}
+	filepath := "D:/manticore.metrics/src/log.txt"
+	logFile, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
+	if err != nil {
+		panic(err)
+	}
+	loger = log.New(logFile, "[orcale_query]", log.LstdFlags|log.Llongfile|log.LUTC) // 将文件设置为loger作为输出
 }
 
 func main() {
@@ -619,7 +638,7 @@ func main() {
 
 	if err != nil{
 		defer db.Close()    //关闭数据库
-		log.Fatal("数据库连接失败")
+		loger.Fatal("数据库连接失败")
 		return
 	}
 
