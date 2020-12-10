@@ -6,11 +6,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"gopkg.in/ini.v1"
 	"log"
-	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -293,7 +289,7 @@ type Config struct {
 	DatabaseName        string `ini:"databaseName"`
 }
 
-func recordMetrics() {
+func RecordMetrics() {
 	//查询并收集manticore当前线程状态
 	go func() {
 		for {
@@ -330,9 +326,9 @@ func recordMetrics() {
 				float,_ := strconv.ParseFloat(jobs,64)
 				taskCompletedNum.With(prometheus.Labels{"threadName":name}).Set(float)  //线程完成任务总数
 
-				matchAndSetProto(proto,name)						//线程连接协议
+				MatchAndSetProto(proto,name) //线程连接协议
 
-				matchAndSetThreadStatus(state,name)                 //线程状态
+				MatchAndSetThreadStatus(state,name) //线程状态
 
 			}
 
@@ -377,19 +373,17 @@ func recordMetrics() {
 			queryAvgNumPerSecond.Reset()
 			queryRowsNumPer.Reset()
 
-
 			for rows.Next(){        //循环显示所有的数据
 				rows.Scan(&index,&value)
-				showIndexStatus(index)
+				ShowIndexStatus(index)
 				//fmt.Println(index,"--",value)
 			}
-
 		}
 	}()
 }
 
 //索引收集入口函数
-func showIndexStatus(indexName string) {
+func ShowIndexStatus(indexName string) {
 	rows,err:=db.Query("show index "+indexName+" status")       //获取所有数据
 
 	if  err != nil{
@@ -401,16 +395,16 @@ func showIndexStatus(indexName string) {
 
 	for rows.Next(){        //循环显示所有的数据
 		rows.Scan(&variableName,&value)
-		matchAndSetIndexMetric(indexName,variableName,value)
+		MatchAndSetIndexMetric(indexName,variableName,value)
 	}
 
 }
 
 //收集多种索引指标
-func matchAndSetIndexMetric(indexName string,variableName string,value string) {
+func MatchAndSetIndexMetric(indexName string,variableName string,value string) {
 	switch variableName {
 	case "index_type":
-		matchAndSetIndexType(value,indexName)
+		MatchAndSetIndexType(value,indexName)
 	case "indexed_documents":
 		float,_ := strconv.ParseFloat(value,64)
 		docNum.With(prometheus.Labels{"indexName":indexName}).Set(float)
@@ -464,7 +458,7 @@ func matchAndSetIndexMetric(indexName string,variableName string,value string) {
 		float,_ := strconv.ParseFloat(value,64)
 		garbageBytes.With(prometheus.Labels{"indexName":indexName}).Set(float)
 	case "query_time_1min":
-		val := splitValue(value)
+		val := SplitValue(value)
 		if  val!= ""{
 			float,_ := strconv.ParseFloat(val,64)
 			//fmt.Println(float/60)
@@ -472,7 +466,7 @@ func matchAndSetIndexMetric(indexName string,variableName string,value string) {
 			queryAvgNumPerSecond.With(prometheus.Labels{"indexName":indexName}).Set(float/60)
 		}
 	case "found_rows_1min":
-		val := splitRowValue(value)
+		val := SplitRowValue(value)
 		if  val!= ""{
 			float,_ := strconv.ParseFloat(val,64)
 			//fmt.Println(float)
@@ -485,7 +479,7 @@ func matchAndSetIndexMetric(indexName string,variableName string,value string) {
 }
 
 //收集索引类别
-func matchAndSetIndexType(types string,indexName string)  {
+func MatchAndSetIndexType(types string,indexName string)  {
 	switch types {
 	case "disk":
 		indexType.With(prometheus.Labels{"indexName":indexName}).Set(0)
@@ -512,7 +506,7 @@ func matchAndSetIndexType(types string,indexName string)  {
 }*/
 
 //收集线程状态
-func matchAndSetThreadStatus(state string ,name string)  {
+func MatchAndSetThreadStatus(state string ,name string)  {
 	switch state {
 	case "handshake":
 		threadStatus.With(prometheus.Labels{"threadName": name}).Set(0)
@@ -531,7 +525,7 @@ func matchAndSetThreadStatus(state string ,name string)  {
 }
 
 //收集连接协议
-func matchAndSetProto(proto string,name string) {
+func MatchAndSetProto(proto string,name string) {
 	switch proto {
 	case "sphinx":
 		connectProto.With(prometheus.Labels{"threadName": name}).Set(0)
@@ -553,7 +547,7 @@ func matchAndSetProto(proto string,name string) {
 }
 
 //分割字符串查询最近一分钟查询总次数
-func splitValue(value string) string{
+func SplitValue(value string) string{
 	if value == ""{
 		return ""
 	}
@@ -566,7 +560,7 @@ func splitValue(value string) string{
 }
 
 //分割字符串获取最近一分钟每次查询行数平均值
-func splitRowValue(value string) string{
+func SplitRowValue(value string) string{
 	if value == ""{
 		return ""
 	}
@@ -581,69 +575,8 @@ func splitRowValue(value string) string{
 	return  secondSplit[1]
 }
 
-//读取配置文件并转成结构体
-func ReadConfig(path string) (Config, error) {
-	var config Config
-	conf, err := ini.Load(path)   //加载配置文件
-	if err != nil {
-		log.Println("load config file fail!")
-		return config, err
-	}
-	conf.BlockMode = false
-	err = conf.MapTo(&config)   //解析成结构体
-	if err != nil {
-		log.Println("mapto config file fail!")
-		return config, err
-	}
-	return config, nil
-}
 
-//初始化数据库
-func initSql(){
-	var filepath  = "src/main/manticore.conf"
-	config,err := ReadConfig(filepath)   //也可以通过os.arg或flag从命令行指定配置文件路径
 
-	if err != nil {
-		loger.Fatal(err)
-	}
 
-	loger.Println(config.ManticoreDriverName)
-	loger.Println(config.Username +":"+config.Password +"@("+config.Ip +":"+config.Port +")/"+config.DatabaseName)
-	// 设置连接数据库的参数
-	db, err =sql.Open(config.ManticoreDriverName,config.Username+":"+config.Password+"@("+config.Ip+":"+config.Port+")/"+config.DatabaseName)
-	if err != nil {
-		loger.Fatal(err)
-	}
-}
 
-func init() {
-	file,er:=os.Open("D:/manticore.metrics/src/log.txt")
-	defer func(){ _ = file.Close() }()
-	if er!=nil && !os.IsExist(er){
-		file, _ = os.Create("D:/manticore.metrics/src/log.txt")
 
-	}
-	filepath := "D:/manticore.metrics/src/log.txt"
-	logFile, err := os.OpenFile(filepath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0766)
-	if err != nil {
-		panic(err)
-	}
-	loger = log.New(logFile, "[orcale_query]", log.LstdFlags|log.Llongfile|log.LUTC) // 将文件设置为loger作为输出
-}
-
-func main() {
-	initSql()
-	defer db.Close()    //关闭数据库
-	err:=db.Ping()      //连接数据库
-
-	if err != nil{
-		defer db.Close()    //关闭数据库
-		loger.Fatal("数据库连接失败")
-		return
-	}
-
-	recordMetrics()  //开始记录manticore指标
-
-	http.Handle("/metrics", promhttp.Handler())
-	http.ListenAndServe(":2112", nil)
-}
